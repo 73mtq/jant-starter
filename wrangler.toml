@@ -1,4 +1,4 @@
-name = "my-site"
+name = "jant-starter"
 main = "index.js"
 compatibility_date = "2026-01-20"
 compatibility_flags = ["nodejs_compat"]
@@ -47,7 +47,7 @@ directory = "./node_modules/@jant/core/dist/client"
 [[d1_databases]]
 binding = "DB"
 database_name = "my-site-db"
-database_id = "local"
+database_id = "16007ddd-eb18-4cb6-a632-be15a55be4e3"
 migrations_dir = "node_modules/@jant/core/src/db/migrations"
 
 [[r2_buckets]]
