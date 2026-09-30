@@ -3,8 +3,32 @@ main = "index.js"
 compatibility_date = "2026-01-20"
 compatibility_flags = ["nodejs_compat"]
 
+# Wrangler deletes every plain-text variable that is absent from this file when
+# it deploys, which would drop variables set from the Cloudflare dashboard.
+keep_vars = true
+
 [assets]
-directory = "./node_modules/@jant/core/dist/client"
+# A site-owned publish directory so _headers can live beside the assets.
+# scripts/prepare-assets.mjs fills it from @jant/core.
+directory = "./dist/public"
+
+
+# ============================================
+# Routes
+# ============================================
+# www.feiyisc.top is bound from the Cloudflare dashboard and is deliberately
+# absent here. The bare domain had a proxied DNS record but no route, which is
+# why it answered 521. index.js redirects this host to the canonical origin.
+
+[[routes]]
+pattern = "feiyisc.top/*"
+zone_name = "feiyisc.top"
+
+# Without this, `wrangler dev` answers on the route's hostname and a request to
+# http://localhost:3000 arrives with `feiyisc.top` in the URL, so the canonical
+# host redirect in index.js would send every local request to the live site.
+[dev]
+host = "localhost"
 
 
 # ============================================
@@ -14,33 +38,36 @@ directory = "./node_modules/@jant/core/dist/client"
 # Sensitive secrets (like AUTH_SECRET and INTERNAL_ADMIN_TOKEN) should be:
 # - Local dev: .dev.vars file (not committed)
 # - Production: wrangler secret put AUTH_SECRET
-# Full details: https://github.com/jant-me/jant/blob/main/docs/configuration.md
+# Full details: https://jant.me/docs/configuration
 
 [vars]
-# Optional: Pin your site's public origin (e.g. https://my-blog.example.com)
-# https://github.com/jant-me/jant/blob/main/docs/configuration.md#public-urls-and-subpaths
+# Pin the public origin so feeds, sitemaps, canonical links, and og:url all
+# name the host that index.js redirects every other host to.
+SITE_ORIGIN = "https://www.feiyisc.top"
+# The site is a personal daily log, so the main feed at /feed follows Latest.
+# A database setting of the same name would win over this value.
+MAIN_RSS_FEED = "latest"
 # Optional: Mount the site under a subpath such as /blog
 # SITE_PATH_PREFIX = "/blog"
 
 # Optional: Site configuration
 # You can also set these from the Settings page at /settings
-# https://github.com/jant-me/jant/blob/main/docs/configuration.md#settings-page
 # SITE_NAME = "My Blog"
 # SITE_DESCRIPTION = "A personal blog powered by Jant"
 # SITE_LANGUAGE = "en"
 
 # Optional: Pagination defaults
-# PAGE_SIZE = 50
+# PAGE_SIZE = 25
 # SEARCH_PAGE_SIZE = 25
 # ARCHIVE_PAGE_SIZE = 100
 
 # Optional: R2 Storage (for media uploads)
-# https://github.com/jant-me/jant/blob/main/docs/configuration.md#r2-default
+# https://jant.me/docs/configuration#r2-default
 # R2_PUBLIC_URL = "https://cdn.example.com"
 
 # Optional: Cloudflare Image Transformations
 # For automatic thumbnail generation and image optimization
-# https://github.com/jant-me/jant/blob/main/docs/configuration.md#image-transformations-optional
+# https://jant.me/docs/configuration#image-transformations-optional
 # IMAGE_TRANSFORM_URL = "https://example.com/cdn-cgi/image"
 
 
@@ -53,6 +80,16 @@ migrations_dir = "node_modules/@jant/core/src/db/migrations"
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "my-site-media"
+
+# Optional: S3-compatible storage (alternative to R2)
+# Set STORAGE_DRIVER = "s3" and configure the options below.
+# When using S3, the [[r2_buckets]] section can be removed.
+# https://jant.me/docs/configuration#s3-compatible-storage
+# STORAGE_DRIVER = "s3"
+# S3_ENDPOINT = "https://s3.example.com"
+# S3_BUCKET = "my-bucket"
+# S3_REGION = "us-east-1"
+# S3_PUBLIC_URL = "https://cdn.example.com"
 
 # Optional: S3-compatible storage (alternative to R2)
 # Set STORAGE_DRIVER = "s3" and configure the options below.

@@ -3,15 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "jant migrate --local && node scripts/dev.mjs",
-    "deploy": "jant deploy",
-    "reset-password": "jant reset-password",
-    "export": "jant export"
+    "dev": "node scripts/prepare-assets.mjs && node scripts/jant.mjs migrate --local && node scripts/dev.mjs",
+    "deploy": "node scripts/deploy.mjs",
+    "reset-password": "node scripts/jant.mjs reset-password",
+    "export": "node scripts/jant.mjs db export"
   },
   "dependencies": {
-    "@jant/core": "^0.6.16"
+    "@jant/core": "^0.10.0"
   },
   "devDependencies": {
-    "wrangler": "4.28.1"
+    "wrangler": "^4.76.0"
   }
 }

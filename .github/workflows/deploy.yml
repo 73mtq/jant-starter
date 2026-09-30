@@ -6,6 +6,10 @@
 # 3. Add repository secrets: CF_API_TOKEN, CF_ACCOUNT_ID
 # 4. Set production secret: npx wrangler secret put AUTH_SECRET
 #
+# The API token needs Workers Scripts, D1, R2, and Workers Routes edit
+# permissions plus Zone Read, because wrangler.toml declares a route by
+# zone_name.
+#
 # Full setup guide: https://github.com/jant-me/jant
 
 name: Deploy
@@ -28,7 +32,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
+          node-version: "24"
           cache: npm
 
       - name: Install dependencies
@@ -66,17 +70,33 @@ jobs:
 
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
-      - name: Run migrations
+      # `npm run deploy` prepares dist/public, applies remote migrations and
+      # data backfills, then uploads the Worker with those static assets.
+      # Calling `wrangler deploy` directly would fail: the asset directory is
+      # built, not committed.
+      - name: Deploy
         if: steps.preflight.outputs.ready == 'true'
-        run: npx wrangler d1 migrations apply DB --remote
+        run: npm run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
 
-      - name: Deploy to Cloudflare Workers
+      # A deploy without an API token cannot reach Cloudflare. Stop here and
+      # say so, so a green run is never taken for a published site.
+      - name: Verify the site answers
         if: steps.preflight.outputs.ready == 'true'
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: deploy
+        run: |
+          set -euo pipefail
+          for path in / /feed /robots.txt; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://www.feiyisc.top$path")
+            echo "$path -> $status"
+            if [ "$status" != "200" ]; then
+              echo "Expected 200 from https://www.feiyisc.top$path" >&2
+              exit 1
+            fi
+          done
+          rules=$(curl -s --max-time 30 https://www.feiyisc.top/robots.txt)
+          case "$rules" in
+            *"Disallow: /search"*) echo "robots.txt carries Disallow: /search" ;;
+            *) echo "robots.txt is missing Disallow: /search" >&2; exit 1 ;;
+          esac
